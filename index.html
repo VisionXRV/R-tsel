@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jungle Rätsel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4CAF50;
+            --dark: #0a110d;
+            --light: #e0f2f1;
+            --accent: #ffb300;
+            --glass-bg: rgba(10, 20, 15, 0.85);
+            --danger: #ff3333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: none !important;
+            -webkit-tap-highlight-color: transparent; /* Remove mobile tap highlight */
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--dark);
+            color: var(--light);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Custom Cursor Elements (Hidden on touch devices) */
+        @media (pointer: fine) {
+            #custom-cursor {
+                position: fixed;
+                top: 0; left: 0;
+                width: 20px; height: 20px;
+                border: 2px solid var(--accent);
+                border-radius: 50%;
+                pointer-events: none;
+                z-index: 10000;
+                transition: width 0.2s, height 0.2s, background-color 0.2s;
+            }
+            #custom-cursor-trail {
+                position: fixed;
+                top: 0; left: 0;
+                width: 8px; height: 8px;
+                background-color: var(--accent);
+                border-radius: 50%;
+                pointer-events: none;
+                z-index: 9999;
+                transition: transform 0.1s ease-out;
+                box-shadow: 0 0 15px var(--accent);
+            }
+            .cursor-hover {
+                width: 40px !important;
+                height: 40px !important;
+                background-color: rgba(255, 179, 0, 0.2);
+                border-color: rgba(255, 179, 0, 0.8);
+            }
+        }
+        @media (pointer: coarse) {
+            #custom-cursor, #custom-cursor-trail {
+                display: none !important;
+            }
+            * { cursor: auto !important; }
+        }
+
+        /* Background layers */
+        .bg-layer {
+            position: absolute;
+            top: -10%; left: -10%;
+            width: 120%; height: 120%;
+            background: url('assets/bg.png') no-repeat center center;
+            background-size: cover;
+            z-index: 0;
+            animation: kenBurns 30s ease-in-out infinite alternate;
+            transition: transform 0.2s ease-out;
+        }
+
+        @keyframes kenBurns {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
+        }
+
+        .vignette {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: radial-gradient(ellipse at center, transparent 10%, rgba(0,0,0,0.95) 100%);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        #particles-container {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .firefly {
+            position: absolute;
+            width: 3px; height: 3px;
+            background: #aaff00;
+            border-radius: 50%;
+            box-shadow: 0 0 15px 3px #aaff00;
+            opacity: 0;
+            animation: firefly-float linear infinite;
+        }
+
+        .ember {
+            position: absolute;
+            width: 4px; height: 4px;
+            background: #ffaa00;
+            border-radius: 50%;
+            box-shadow: 0 0 20px 4px #ff5500;
+            opacity: 0;
+            animation: firefly-float linear infinite;
+        }
+
+        @keyframes firefly-float {
+            0% { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+            20% { opacity: 0.8; transform: scale(1.5); }
+            80% { opacity: 0.8; transform: scale(1); }
+            100% { transform: translateY(-150px) translateX(100px) scale(0.5); opacity: 0; }
+        }
+
+        #flash-layer {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: white;
+            z-index: 999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+
+        .flash-active { opacity: 1 !important; }
+
+        /* Screen Management */
+        .screen {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1s ease;
+            z-index: 10;
+        }
+        .screen.active { opacity: 1; pointer-events: auto; }
+        .hidden { display: none !important; }
+
+        /* Typography & Buttons */
+        .game-title {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(2rem, 8vw, 3.5rem);
+            color: var(--accent);
+            text-shadow: 0 0 30px rgba(255, 179, 0, 0.7);
+            margin-bottom: 30px;
+            letter-spacing: 5px;
+            text-align: center;
+            animation: pulseTitle 3s infinite alternate;
+            padding: 0 20px;
+        }
+
+        @keyframes pulseTitle {
+            from { text-shadow: 0 0 20px rgba(255, 179, 0, 0.5); }
+            to { text-shadow: 0 0 40px rgba(255, 179, 0, 0.9), 0 0 10px #fff; }
+        }
+
+        .epic-btn {
+            background: rgba(0, 0, 0, 0.6);
+            color: var(--accent);
+            border: 2px solid var(--accent);
+            padding: 12px 25px;
+            font-size: clamp(1rem, 4vw, 1.2rem);
+            font-family: 'Cinzel', serif;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: all 0.3s;
+            box-shadow: 0 0 15px rgba(255, 179, 0, 0.2), inset 0 0 15px rgba(255, 179, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(5px);
+            margin-top: 15px;
+            border-radius: 4px;
+        }
+        @media (pointer: fine) {
+            .epic-btn:hover {
+                background: rgba(255, 179, 0, 0.2);
+                box-shadow: 0 0 30px rgba(255, 179, 0, 0.8), inset 0 0 20px rgba(255, 179, 0, 0.4);
+                transform: scale(1.05);
+                text-shadow: 0 0 10px var(--accent);
+            }
+        }
+        .epic-btn:active { transform: scale(0.95); }
+
+        /* Loading Screen */
+        #loading-screen { background: rgba(2, 5, 4, 0.98); z-index: 100; }
+        .loader-container { width: 80%; max-width: 500px; text-align: center; }
+        .progress-bar-bg {
+            width: 100%; height: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 179, 0, 0.2);
+        }
+        .progress-bar {
+            width: 0%; height: 100%;
+            background: linear-gradient(90deg, #ff8c00, var(--accent));
+            box-shadow: 0 0 20px var(--accent);
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .loading-text {
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.7);
+            letter-spacing: 2px;
+            font-family: 'Cinzel', serif;
+            animation: blink 1.5s infinite;
+        }
+
+        /* Start Screen */
+        #start-screen { background: radial-gradient(circle, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.8) 100%); }
+
+        /* Monster Section */
+        .monster-container {
+            width: 50vw; max-width: 300px;
+            aspect-ratio: 1;
+            margin-bottom: 30px;
+            position: relative;
+            animation: monsterBreath 5s ease-in-out infinite;
+            transition: transform 0.1s ease-out;
+        }
+        .monster-blob {
+            width: 100%; height: 100%;
+            background: radial-gradient(circle at 30% 30%, #2E7D32, #0a110d);
+            box-shadow: 0 0 50px rgba(76, 175, 80, 0.5), inset 0 0 50px #000;
+            border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+            animation: morph 8s ease-in-out infinite, pulseGlow 4s infinite alternate;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .monster-blob::after {
+            content: ''; position: absolute;
+            top: 20%; left: 20%; width: 60%; height: 60%;
+            background: radial-gradient(circle, rgba(170,255,0,0.2) 0%, transparent 70%);
+            animation: morph 5s ease-in-out infinite reverse;
+        }
+        .monster-eyes-glow {
+            position: absolute;
+            top: 35%; left: 15%;
+            width: 70%; height: 30%;
+            background: radial-gradient(ellipse, rgba(170,255,0,0.8) 0%, transparent 60%);
+            opacity: 0.6;
+            animation: eyeGlow 2s infinite alternate;
+            pointer-events: none;
+            mix-blend-mode: screen;
+        }
+        .monster-emoji {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: clamp(4rem, 15vw, 6rem);
+            z-index: 5;
+            pointer-events: none;
+            text-shadow: 0 0 20px rgba(170,255,0,0.8);
+            transition: all 0.3s ease;
+        }
+        .talking .monster-blob {
+            animation: morph 1.5s ease-in-out infinite, pulseGlow 0.5s infinite alternate;
+        }
+        .talking .monster-eyes-glow {
+            animation: eyeGlow 0.3s infinite alternate;
+        }
+        .talking .monster-emoji {
+            animation: emojiTalk 0.5s infinite alternate;
+        }
+        @keyframes emojiTalk {
+            0% { transform: translate(-50%, -50%) scale(1) rotate(-5deg); }
+            100% { transform: translate(-50%, -50%) scale(1.1) rotate(5deg); }
+        }
+        @keyframes morph {
+            0% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+            50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+            100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+        }
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 40px rgba(76, 175, 80, 0.3), inset 0 0 40px #000; }
+            100% { box-shadow: 0 0 80px rgba(170, 255, 0, 0.6), inset 0 0 20px #000; }
+        }
+
+        @keyframes monsterBreath {
+            0%, 100% { transform: scale(1) translateY(0); }
+            50% { transform: scale(1.03) translateY(-10px); }
+        }
+        @keyframes eyeGlow {
+            0% { opacity: 0.4; transform: scale(0.9); }
+            100% { opacity: 1; transform: scale(1.1); }
+        }
+
+        @keyframes earthQuake {
+            0% { transform: translate(0,0) rotate(0deg); }
+            10% { transform: translate(-5px,-5px) rotate(-1deg); }
+            20% { transform: translate(5px,5px) rotate(1deg); }
+            30% { transform: translate(-5px,5px) rotate(-1deg); }
+            40% { transform: translate(5px,-5px) rotate(1deg); }
+            50% { transform: translate(-3px,-3px) rotate(0deg); }
+            60% { transform: translate(3px,3px) rotate(0deg); }
+            70% { transform: translate(-2px,2px); }
+            80% { transform: translate(2px,-2px); }
+            100% { transform: translate(0,0); }
+        }
+        .quake { animation: earthQuake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+
+        /* RPG Dialogue Box */
+        .rpg-dialogue-box {
+            background: linear-gradient(180deg, rgba(20,30,25,0.95) 0%, rgba(5,10,8,0.98) 100%);
+            border: 2px solid #2e4a2e;
+            border-top: 5px solid var(--primary);
+            border-bottom: 5px solid var(--primary);
+            padding: 25px;
+            border-radius: 12px;
+            width: 90%; max-width: 700px;
+            min-height: 180px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.9), inset 0 0 30px rgba(0,0,0,0.6);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            backdrop-filter: blur(10px);
+        }
+
+        #dialogue-text {
+            font-size: clamp(1.2rem, 4vw, 1.6rem);
+            line-height: 1.6;
+            color: #e0f2f1;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.9);
+            display: inline;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 10px; height: 20px;
+            background: var(--primary);
+            margin-left: 8px;
+            vertical-align: text-bottom;
+            animation: blink 1s step-end infinite;
+            box-shadow: 0 0 10px var(--primary);
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .input-area {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        #password-input {
+            width: 100%; max-width: 350px;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #444;
+            background: rgba(0, 0, 0, 0.7);
+            color: var(--accent);
+            font-size: clamp(1.2rem, 4vw, 1.5rem);
+            font-family: 'Cinzel', serif;
+            text-align: center;
+            outline: none;
+            transition: all 0.3s;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.9);
+            letter-spacing: 2px;
+        }
+        #password-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px rgba(255, 179, 0, 0.4), inset 0 0 15px rgba(0,0,0,0.9);
+            transform: scale(1.02);
+        }
+
+        .error-shake {
+            animation: earthQuake 0.4s ease;
+            border-color: var(--danger) !important;
+            box-shadow: 0 0 30px rgba(255, 51, 51, 0.6) !important;
+            color: var(--danger) !important;
+        }
+
+        /* Brawler List */
+        #brawler-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            justify-content: center;
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #444;
+            border-radius: 8px;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        #brawler-list::-webkit-scrollbar { width: 8px; }
+        #brawler-list::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); border-radius: 4px; }
+        #brawler-list::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
+
+        .brawler-btn {
+            background: rgba(46, 125, 50, 0.2);
+            border: 1px solid var(--primary);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: 'Outfit', sans-serif;
+            font-size: clamp(0.8rem, 2.5vw, 1rem);
+            transition: all 0.2s;
+        }
+        @media (pointer: fine) {
+            .brawler-btn:hover {
+                background: rgba(46, 125, 50, 0.5);
+                transform: scale(1.05);
+            }
+        }
+        .brawler-btn.selected {
+            background: var(--primary);
+            color: #000;
+            transform: scale(1.05);
+            border-color: #fff;
+            box-shadow: 0 0 10px var(--primary);
+        }
+
+        /* Hint System */
+        .hint-btn {
+            background: rgba(255, 85, 0, 0.1);
+            color: #ff7733;
+            border: 1px solid #ff7733;
+            padding: 12px 25px;
+            border-radius: 4px;
+            font-family: 'Cinzel', serif;
+            font-size: clamp(0.8rem, 3vw, 1.1rem);
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+            box-shadow: 0 0 15px rgba(255, 85, 0, 0.2);
+            backdrop-filter: blur(5px);
+        }
+        .hint-btn:hover {
+            background: rgba(255, 85, 0, 0.3);
+            color: #fff;
+            border-color: #ffb300;
+            box-shadow: 0 0 25px rgba(255, 179, 0, 0.6);
+            transform: scale(1.05);
+        }
+
+        .hint-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 200;
+            opacity: 0; transition: opacity 0.4s; pointer-events: none;
+            backdrop-filter: blur(5px);
+        }
+        .hint-modal.active { opacity: 1; pointer-events: auto; }
+        
+        .hint-content {
+            background: linear-gradient(135deg, #1a1510 0%, #0a0500 100%);
+            border: 2px solid #ffb300;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%; max-width: 500px;
+            text-align: center;
+            transform: scale(0.5) translateY(100px); 
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.9), 0 0 30px rgba(255,179,0,0.2);
+        }
+        .hint-modal.active .hint-content { transform: scale(1) translateY(0); }
+        
+        .hint-text {
+            font-family: 'Georgia', serif;
+            font-size: clamp(1.1rem, 4vw, 1.4rem);
+            color: #f4ecd8;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.9);
+        }
+
+        /* Envelope Section */
+        #envelope-section { background: radial-gradient(circle, rgba(20,20,10,0.8) 0%, rgba(0,0,0,0.95) 100%); }
+        .envelope-wrapper { display: flex; flex-direction: column; align-items: center; }
+        .envelope-container { position: relative; padding: 20px; transition: transform 0.1s ease-out; }
+        .envelope-img {
+            width: 80vw; max-width: 400px;
+            filter: drop-shadow(0 30px 40px rgba(0,0,0,0.9));
+            animation: floatEnvelope 4s ease-in-out infinite;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative; z-index: 2;
+        }
+        @media (pointer: fine) {
+            .envelope-container:hover .envelope-img { filter: drop-shadow(0 30px 50px rgba(255,179,0,0.4)); }
+        }
+        .energy-glow {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 120%; height: 120%;
+            background: radial-gradient(circle, rgba(255,179,0,0.9) 0%, transparent 60%);
+            opacity: 0; z-index: 1; transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none; mix-blend-mode: color-dodge;
+        }
+        @keyframes floatEnvelope {
+            0%, 100% { transform: translateY(0) rotate(-2deg); }
+            50% { transform: translateY(-20px) rotate(2deg); }
+        }
+        .epic-text {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(1.2rem, 5vw, 1.8rem);
+            color: var(--accent);
+            margin-top: 30px;
+            letter-spacing: 3px;
+            text-shadow: 0 0 15px rgba(255,179,0,0.6);
+            animation: pulseTitle 2s infinite alternate;
+        }
+
+        /* Letter Section */
+        #letter-section { background: rgba(0, 0, 0, 0.95); perspective: 1000px; }
+        .letter-content {
+            background: #f4ecd8; color: #2c241b;
+            padding: 40px 30px; border-radius: 8px;
+            width: 90%; max-width: 600px;
+            max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 0 60px rgba(255, 179, 0, 0.3), 0 30px 80px rgba(0,0,0,0.9);
+            font-family: 'Georgia', serif;
+            font-size: clamp(1rem, 3.5vw, 1.3rem);
+            line-height: 1.8;
+            position: relative;
+            transform: scale(0.1) rotate(-10deg) translateZ(-500px);
+            opacity: 0; filter: blur(20px);
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .letter-content.reveal { animation: epicReveal 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes epicReveal {
+            0% { transform: scale(0.1) rotate(-20deg) translateZ(-800px); opacity: 0; filter: blur(20px); }
+            60% { opacity: 1; filter: blur(2px); }
+            100% { transform: scale(1) rotate(0deg) translateZ(0); opacity: 1; filter: blur(0); }
+        }
+        .letter-content::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: url('https://www.transparenttextures.com/patterns/old-wall.png');
+            opacity: 0.6; pointer-events: none; border-radius: 8px;
+        }
+        .letter-text { width: 100%; z-index: 2; }
+        .signature {
+            font-family: 'Brush Script MT', cursive;
+            font-size: clamp(2rem, 6vw, 3rem);
+            display: block; margin-top: 20px;
+            color: #1a1510; text-align: right;
+        }
+        .close-btn {
+            margin-top: 30px;
+            background: #2c241b; color: #f4ecd8;
+            border: 2px solid #1a1510;
+            padding: 10px 20px;
+            font-family: 'Cinzel', serif; font-size: 1rem;
+            transition: all 0.3s; z-index: 2;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            border-radius: 4px;
+        }
+        .close-btn:hover { background: #1a1510; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.7); }
+
+        /* End Screen */
+        #end-screen { background: #000; overflow: hidden; }
+        .credits-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+        }
+        .end-text {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(1.5rem, 6vw, 2.5rem);
+            color: #888; letter-spacing: 5px;
+            text-align: center; padding: 20px;
+            animation: endTextFade 4s ease-in-out forwards;
+            position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 100%;
+        }
+        @keyframes endTextFade {
+            0% { opacity: 0; text-shadow: 0 0 10px rgba(255,255,255,0); }
+            20% { opacity: 1; text-shadow: 0 0 30px rgba(255,255,255,0.5); }
+            80% { opacity: 1; text-shadow: 0 0 30px rgba(255,255,255,0.5); }
+            100% { opacity: 0; text-shadow: 0 0 10px rgba(255,255,255,0); }
+        }
+        .credits-roll {
+            position: absolute;
+            top: 100%;
+            width: 100%;
+            text-align: center;
+            display: flex; flex-direction: column; gap: 60px;
+            padding-bottom: 50px;
+        }
+        .credits-active {
+            animation: rollCredits 20s linear forwards;
+        }
+        @keyframes rollCredits {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(calc(-100% - 100vh)); }
+        }
+        .credit-block {
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .credit-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: clamp(1rem, 3vw, 1.2rem);
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .credit-name {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(1.5rem, 5vw, 2.5rem);
+            color: #fff;
+            letter-spacing: 3px;
+            text-shadow: 0 0 15px rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+    <!-- Custom Cursors -->
+    <div id="custom-cursor"></div>
+    <div id="custom-cursor-trail"></div>
+
+    <div class="bg-layer" id="bg-layer"></div>
+    <div class="vignette"></div>
+    <div id="particles-container"></div>
+    <div id="flash-layer"></div>
+
+    <!-- 1. Loading Screen -->
+    <div id="loading-screen" class="screen active">
+        <h1 class="game-title">Tempel des Dschungels</h1>
+        <div class="loader-container">
+            <div class="progress-bar-bg"><div class="progress-bar" id="progress-bar"></div></div>
+            <p id="loading-text" class="loading-text">Entschlüssele Pfade...</p>
+        </div>
+    </div>
+
+    <!-- 2. Start Screen -->
+    <div id="start-screen" class="screen hidden">
+        <h1 class="game-title">Oh Hi Len 
+            Du Hier ? iM Jungel ? Das wird dem Ungeheuer gar nicht gefallen !!</h1>
+        <button id="start-btn" class="epic-btn interactive-element">Betrete den Tempel</button>
+    </div>
+
+    <div id="game-container" class="hidden">
+        <!-- 3. Monster Section -->
+        <div id="monster-section" class="screen">
+            <div class="monster-container" id="monster-container">
+                <div class="monster-blob" id="monster-blob"></div>
+                <div class="monster-eyes-glow"></div>
+                <div id="monster-emoji" class="monster-emoji">🤨</div>
+            </div>
+            
+            <div class="rpg-dialogue-box">
+                <div>
+                    <p id="dialogue-text"></p><span class="cursor" id="text-cursor"></span>
+                </div>
+                
+                <div class="input-area">
+                    <div id="brawler-list" class="hidden interactive-element"></div>
+                    <input type="text" id="password-input" class="hidden interactive-element" placeholder="Passwort eingeben..." autocomplete="off">
+                    <button id="idk-btn" class="hint-btn interactive-element hidden">Ich habe keine Ahnung was das Passwort ist</button>
+                    <button id="next-btn" class="epic-btn interactive-element" style="display: none;">Weiter</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hint Modal -->
+        <div id="hint-modal" class="hint-modal">
+            <div class="hint-content">
+                <p id="hint-text" class="hint-text"></p>
+                <button id="close-hint-btn" class="epic-btn interactive-element" style="display:none;">Verstanden</button>
+            </div>
+        </div>
+
+        <!-- 4. Envelope Section -->
+        <div id="envelope-section" class="screen hidden">
+            <div class="envelope-wrapper">
+                <div class="envelope-container" id="envelope-container">
+                    <img src="assets/envelope.png" alt="Brief" class="envelope-img interactive-element" id="envelope-img">
+                    <div class="energy-glow" id="energy-glow"></div>
+                </div>
+                <div class="click-hint epic-text" id="click-hint">Berühre das Siegel (5)</div>
+            </div>
+        </div>
+
+        <!-- 5. Final Letter Section -->
+        <div id="letter-section" class="screen hidden">
+            <div class="letter-content" id="letter-content">
+                <div class="letter-text">
+                    <p>Cool das du es aufbekommen hast<br><br>
+                    Ich hoffe es hat Spaß gemacht<br><br>
+                    Also zu deiner Frage : ich kann die erste Woche komplett also dort können wir gerne was unternehmen<br><br>
+                    Bitte bring das kleine Rätzel also die Schachtel mir wieder mit da es ein Geschenk war.....
+                    Außerdem wollte ich sagen das Frau Schwerdt geht falls du es noch net mitbekommen hast.
+                    <br><br>
+                    Ich hoffe du fandest das selbst gemachte Rätzel gut<br><br>
+                    <span class="signature">Dein Carlos</span></p>
+                </div>
+                <button id="close-letter-btn" class="close-btn interactive-element">Brief schließen</button>
+            </div>
+        </div>
+
+        <!-- 6. End Screen -->
+        <div id="end-screen" class="screen hidden">
+            <div id="credits-container" class="credits-container">
+                <h2 class="end-text" id="final-end-text">Die Reise ist beendet.</h2>
+                <div class="credits-roll hidden" id="credits-roll">
+                    <div class="credit-block">
+                        <p class="credit-title">Created by</p>
+                        <p class="credit-name">Carlos</p>
+                    </div>
+                    <div class="credit-block">
+                        <p class="credit-title">Programmiert mit</p>
+                        <p class="credit-name">Antigravity</p>
+                    </div>
+                    <div class="credit-block">
+                        <p class="credit-title">Bilder kreiert mit</p>
+                        <p class="credit-name">Google Gemini</p>
+                    </div>
+                    <div class="credit-block">
+                        <p class="credit-title">Webseite gehostet auf</p>
+                        <p class="credit-name">GitHub</p>
+                    </div>
+                    <div class="credit-block" style="margin-top: 50px;">
+                        <p class="credit-name" style="font-size: clamp(1.2rem, 4vw, 2rem); color: var(--accent);">Vielen Dank fürs Spielen!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const body = document.body;
+            const flashLayer = document.getElementById('flash-layer');
+            const loadingScreen = document.getElementById('loading-screen');
+            const progressBar = document.getElementById('progress-bar');
+            const loadingText = document.getElementById('loading-text');
+            
+            const startScreen = document.getElementById('start-screen');
+            const startBtn = document.getElementById('start-btn');
+            const gameContainer = document.getElementById('game-container');
+            
+            const monsterSection = document.getElementById('monster-section');
+            const monsterContainer = document.getElementById('monster-container');
+            const dialogueText = document.getElementById('dialogue-text');
+            const textCursor = document.getElementById('text-cursor');
+            const nextBtn = document.getElementById('next-btn');
+            const passwordInput = document.getElementById('password-input');
+            const idkBtn = document.getElementById('idk-btn');
+            const brawlerListContainer = document.getElementById('brawler-list');
+            
+            const hintModal = document.getElementById('hint-modal');
+            const hintTextElement = document.getElementById('hint-text');
+            const closeHintBtn = document.getElementById('close-hint-btn');
+            
+            const monsterEmoji = document.getElementById('monster-emoji');
+            
+            const envelopeSection = document.getElementById('envelope-section');
+            const envelopeContainer = document.getElementById('envelope-container');
+            const envelopeImg = document.getElementById('envelope-img');
+            const energyGlow = document.getElementById('energy-glow');
+            const clickHint = document.getElementById('click-hint');
+            
+            const letterSection = document.getElementById('letter-section');
+            const letterContent = document.getElementById('letter-content');
+            const closeLetterBtn = document.getElementById('close-letter-btn');
+
+            const endScreen = document.getElementById('end-screen');
+            const bgLayer = document.getElementById('bg-layer');
+
+            // Custom Cursor Logic (Only active on non-touch devices due to CSS queries, but JS runs anyway)
+            const cursor = document.getElementById('custom-cursor');
+            const cursorTrail = document.getElementById('custom-cursor-trail');
+            let mouseX = window.innerWidth / 2, mouseY = window.innerHeight / 2;
+            let trailX = window.innerWidth / 2, trailY = window.innerHeight / 2;
+
+            document.addEventListener('mousemove', (e) => {
+                mouseX = e.clientX; mouseY = e.clientY;
+                cursor.style.transform = `translate(${mouseX - 10}px, ${mouseY - 10}px)`;
+
+                const xRatio = (mouseX / window.innerWidth) - 0.5;
+                const yRatio = (mouseY / window.innerHeight) - 0.5;
+                
+                bgLayer.style.transform = `translate(${xRatio * -20}px, ${yRatio * -20}px) scale(1.1)`;
+                if(monsterSection.classList.contains('active')) {
+                    monsterContainer.style.transform = `translate(${xRatio * 15}px, ${yRatio * 15}px)`;
+                }
+                if(envelopeSection.classList.contains('active')) {
+                    envelopeContainer.style.transform = `translate(${xRatio * 20}px, ${yRatio * 20}px)`;
+                }
+            });
+
+            function animateTrail() {
+                trailX += (mouseX - trailX) * 0.15;
+                trailY += (mouseY - trailY) * 0.15;
+                cursorTrail.style.transform = `translate(${trailX - 4}px, ${trailY - 4}px)`;
+                requestAnimationFrame(animateTrail);
+            }
+            animateTrail();
+
+            const interactiveElements = document.querySelectorAll('.interactive-element');
+            interactiveElements.forEach(el => {
+                el.addEventListener('mouseenter', () => cursor.classList.add('cursor-hover'));
+                el.addEventListener('mouseleave', () => cursor.classList.remove('cursor-hover'));
+            });
+
+            // Dialogue States
+            const states = [
+                { text: "Ah Len... Du wagst es, meinen Tempel zu betreten?  Du hast also das Rätsel gelöst...", showInput: false, btnText: "Weiter", emoji: "🤨" },
+                { text: "Du hast viel Zeit und Verstand investiert. Nun bist du hier, um deine wohlverdiente Belohnung einzufordern.", showInput: false, btnText: "Weiter", emoji: "🧐" },
+                { text: "Aber um sicherzugehen, dass du auch wirklich Len bist: Welchen Brawler habe ich auf meinem Profil als Favorit (ganz vorne drauf als Profilbild)?", showInput: false, showBrawlers: true, btnText: "Antworten", emoji: "🧐" },
+                { text: "Gut, aber hast du auch das Kleingedruckte gelesen? Du weißt ganz genau was ich meine. Immer besser hingucken, immer lieber doppelt drauf gucken. Hast du es gelesen in meinem Brief, den ich dir geschickt habe?", showInput: true, expectedWord: "FERIEN", showHintButton: false, btnText: "Antworten", emoji: "🧐" },
+                { text: "Richtig! Doch das letzte Siegel öffnet sich nur demjenigen, der das allerletzte Passwort kennt. Sprich es aus!", showInput: true, expectedWord: "SCHERE", showHintButton: true, btnText: "Siegel brechen", emoji: "😠" },
+                { text: "Das Siegel ist gebrochen! Das Geheimnis gehört dir. Ein Brief von Carlos wartet auf dich.", showInput: false, btnText: "Zur Belohnung", emoji: "😲" }
+            ];
+
+            let currentState = 0;
+            let isTyping = false;
+            let envelopeClicks = 5;
+            let selectedBrawler = null;
+            let isErrorShowing = false;
+
+            const brawlers = [
+                "8-Bit", "Alli", "Amber", "Angelo", "Ash", "Barley", "Bea", "Belle", "Berry", "Bibi", "Bo", "Bolt", "Bonnie", "Brock", "Bull", "Buster", "Buzz", "Byron", "Carl", "Charlie", "Chester", "Chuck", "Clancy", "Colette", "Colt", "Cordelius", "Crow", "Damian", "Darryl", "Doug", "Draco", "Dynamike", "Edgar", "El Primo", "Emz", "Eve", "Fang", "Finx", "Frank", "Gale", "Gene", "Gigi", "Glowy", "Gray", "Griff", "Grom", "Gus", "Hank", "Jacky", "Jae-yong", "Janet", "Jessie", "Juju", "Kaze", "Kenji", "Kit", "Larry & Lawrie", "Leon", "Lily", "Lola", "Lou", "Lumi", "Maisie", "Mandy", "Max", "Meeple", "Meg", "Melodie", "Mico", "Mina", "Moe", "Mortis", "Mr. P", "Najia", "Nani", "Nita", "Ollie", "Otis", "Pam", "Pearl", "Penny", "Pierce", "Piper", "Poco", "R-T", "Rico", "Rosa", "Ruffs", "Sam", "Sandy", "Shade", "Shelly", "Sirius", "Spike", "Sprout", "Squeak", "Starr Nova", "Stu", "Surge", "Tara", "Tick", "Trunk", "Willow", "Ziggy"
+            ];
+
+            brawlers.forEach(b => {
+                const btn = document.createElement('button');
+                btn.classList.add('brawler-btn');
+                btn.textContent = b;
+                btn.addEventListener('click', () => {
+                    if (isTyping || isErrorShowing) return;
+                    document.querySelectorAll('.brawler-btn').forEach(el => el.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    selectedBrawler = b;
+                    nextBtn.style.display = 'inline-block';
+                });
+                btn.addEventListener('mouseenter', () => cursor.classList.add('cursor-hover'));
+                btn.addEventListener('mouseleave', () => cursor.classList.remove('cursor-hover'));
+                brawlerListContainer.appendChild(btn);
+            });
+
+            // 1. Particle System
+            function createParticles() {
+                const container = document.getElementById('particles-container');
+                for (let i = 0; i < (window.innerWidth < 600 ? 15 : 30); i++) {
+                    const firefly = document.createElement('div');
+                    firefly.classList.add('firefly');
+                    firefly.style.left = Math.random() * 100 + 'vw';
+                    firefly.style.top = Math.random() * 100 + 'vh';
+                    firefly.style.animationDuration = (Math.random() * 5 + 4) + 's';
+                    firefly.style.animationDelay = (Math.random() * 5) + 's';
+                    container.appendChild(firefly);
+                }
+                for (let i = 0; i < (window.innerWidth < 600 ? 5 : 10); i++) {
+                    const ember = document.createElement('div');
+                    ember.classList.add('ember');
+                    ember.style.left = Math.random() * 100 + 'vw';
+                    ember.style.top = Math.random() * 100 + 'vh';
+                    ember.style.animationDuration = (Math.random() * 3 + 3) + 's';
+                    ember.style.animationDelay = (Math.random() * 5) + 's';
+                    container.appendChild(ember);
+                }
+            }
+            createParticles();
+
+            // 2. Loading Sequence
+            const loadingTexts = ["Entschlüssele Pfade...", "Entzünde Fackeln...", "Banne die Geister...", "Wecke alte Magie..."];
+            let loadProgress = 0;
+            const loadInterval = setInterval(() => {
+                loadProgress += Math.random() * 15;
+                if (loadProgress >= 100) {
+                    loadProgress = 100;
+                    clearInterval(loadInterval);
+                    setTimeout(() => {
+                        loadingScreen.classList.remove('active');
+                        setTimeout(() => {
+                            loadingScreen.classList.add('hidden');
+                            startScreen.classList.remove('hidden');
+                            setTimeout(() => startScreen.classList.add('active'), 50);
+                        }, 1000);
+                    }, 500);
+                }
+                progressBar.style.width = loadProgress + '%';
+                const textIndex = Math.floor((loadProgress / 100) * loadingTexts.length);
+                if(loadingTexts[textIndex]) loadingText.textContent = loadingTexts[textIndex];
+            }, 300);
+
+            // 3. Start Button
+            startBtn.addEventListener('click', () => {
+                flashScreen(() => {
+                    startScreen.classList.remove('active');
+                    startScreen.classList.add('hidden');
+                    gameContainer.classList.remove('hidden');
+                    monsterSection.classList.add('active');
+                    body.classList.add('quake');
+                    setTimeout(() => body.classList.remove('quake'), 600);
+                    updateState();
+                });
+            });
+
+            function flashScreen(midCallback) {
+                flashLayer.classList.add('flash-active');
+                setTimeout(() => {
+                    if(midCallback) midCallback();
+                    setTimeout(() => flashLayer.classList.remove('flash-active'), 150);
+                }, 400); 
+            }
+
+            // 4. Dialogue System
+            function updateState() {
+                const state = states[currentState];
+                if (state.emoji) {
+                    monsterEmoji.textContent = state.emoji;
+                }
+                
+                typeText(state.text, () => {
+                    if (state.showInput) {
+                        passwordInput.classList.remove('hidden');
+                        passwordInput.value = '';
+                        passwordInput.focus();
+                        if (state.showHintButton) {
+                            idkBtn.classList.remove('hidden');
+                        } else {
+                            idkBtn.classList.add('hidden');
+                        }
+                        brawlerListContainer.classList.add('hidden');
+                        nextBtn.style.display = 'inline-block';
+                    } else if (state.showBrawlers) {
+                        passwordInput.classList.add('hidden');
+                        idkBtn.classList.add('hidden');
+                        brawlerListContainer.classList.remove('hidden');
+                        selectedBrawler = null;
+                        document.querySelectorAll('.brawler-btn').forEach(el => el.classList.remove('selected'));
+                        nextBtn.style.display = 'none';
+                    } else {
+                        passwordInput.classList.add('hidden');
+                        idkBtn.classList.add('hidden');
+                        brawlerListContainer.classList.add('hidden');
+                        nextBtn.style.display = 'inline-block';
+                    }
+                    nextBtn.textContent = state.btnText;
+                    textCursor.style.display = 'none';
+                });
+            }
+
+            function typeText(text, callback) {
+                isTyping = true;
+                dialogueText.textContent = '';
+                nextBtn.style.display = 'none';
+                passwordInput.classList.add('hidden');
+                idkBtn.classList.add('hidden');
+                textCursor.style.display = 'inline-block';
+                monsterContainer.classList.add('talking');
+                
+                let i = 0;
+                function type() {
+                    if (i < text.length) {
+                        dialogueText.textContent += text.charAt(i);
+                        i++;
+                        setTimeout(type, Math.random() * 25 + 15); 
+                    } else {
+                        isTyping = false;
+                        monsterContainer.classList.remove('talking');
+                        if(callback) callback();
+                    }
+                }
+                type();
+            }
+
+            nextBtn.addEventListener('click', () => {
+                if (isTyping || isErrorShowing) return;
+                const state = states[currentState];
+
+                if (state.showBrawlers) {
+                    if (selectedBrawler === "Meg") {
+                        body.style.background = "rgba(170,255,0,0.15)";
+                        setTimeout(() => body.style.background = "", 200);
+                        currentState++;
+                        updateState();
+                    } else {
+                        brawlerListContainer.classList.add('error-shake');
+                        body.style.background = "rgba(255,51,51,0.2)";
+                        monsterEmoji.textContent = "🤬";
+                        
+                        isErrorShowing = true;
+                        dialogueText.textContent = "Oh, das ist falsch! Glaubst du ernsthaft, du kommst hier so einfach rein?";
+                        
+                        setTimeout(() => {
+                            brawlerListContainer.classList.remove('error-shake');
+                            body.style.background = "";
+                            monsterEmoji.textContent = states[currentState].emoji;
+                            dialogueText.textContent = state.text;
+                            isErrorShowing = false;
+                            
+                            selectedBrawler = null;
+                            document.querySelectorAll('.brawler-btn').forEach(el => el.classList.remove('selected'));
+                            nextBtn.style.display = 'none';
+                        }, 3000);
+                    }
+                } else if (state.showInput) {
+                    const pwd = passwordInput.value.trim().toUpperCase();
+                    if (pwd === state.expectedWord) {
+                        body.style.background = "rgba(170,255,0,0.15)";
+                        setTimeout(() => body.style.background = "", 200);
+                        currentState++;
+                        updateState();
+                    } else {
+                        passwordInput.classList.add('error-shake');
+                        body.style.background = "rgba(255,51,51,0.2)";
+                        monsterEmoji.textContent = "🤬";
+                        setTimeout(() => {
+                            passwordInput.classList.remove('error-shake');
+                            body.style.background = "";
+                            monsterEmoji.textContent = states[currentState].emoji;
+                        }, 800);
+                    }
+                } else {
+                    currentState++;
+                    if (currentState < states.length) {
+                        updateState();
+                    } else {
+                        flashScreen(() => {
+                            monsterSection.classList.remove('active');
+                            monsterSection.classList.add('hidden');
+                            envelopeSection.classList.remove('hidden');
+                            envelopeSection.classList.add('active');
+                            monsterContainer.style.transform = 'none'; 
+                        });
+                    }
+                }
+            });
+
+            passwordInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') nextBtn.click();
+            });
+
+            // Hint Logic
+            const hintMessage = "Nun, dann gebe ich dir einen Tipp...\nEs ist ein Jugendwort. Du sagst es oft und Gustav sagt es auch oft. Vor allen Dingen habe ich es oft an deinem Geburtstag mitbekommen.\nUnd es hat was mit der Schule bzw. mit der Federtasche zu tun...";
+            let isHintTyping = false;
+
+            function showHint() {
+                hintModal.classList.add('active');
+                hintTextElement.textContent = '';
+                closeHintBtn.style.display = 'none';
+                isHintTyping = true;
+                
+                let i = 0;
+                function typeHint() {
+                    if (i < hintMessage.length) {
+                        if (hintMessage.charAt(i) === '\n') {
+                            hintTextElement.appendChild(document.createElement('br'));
+                            hintTextElement.appendChild(document.createElement('br'));
+                        } else {
+                            hintTextElement.appendChild(document.createTextNode(hintMessage.charAt(i)));
+                        }
+                        i++;
+                        setTimeout(typeHint, 30);
+                    } else {
+                        isHintTyping = false;
+                        closeHintBtn.style.display = 'inline-block';
+                    }
+                }
+                setTimeout(typeHint, 500);
+            }
+
+            idkBtn.addEventListener('click', showHint);
+
+            closeHintBtn.addEventListener('click', () => {
+                if(!isHintTyping) {
+                    hintModal.classList.remove('active');
+                }
+            });
+
+            // 5. Epic Envelope Sequence
+            envelopeImg.addEventListener('click', () => {
+                if (envelopeClicks <= 0) return;
+                
+                envelopeClicks--;
+                const intensity = 5 - envelopeClicks; 
+                
+                envelopeImg.style.transform = `scale(${1 - intensity * 0.05}) rotate(${(Math.random() * 20 - 10)}deg)`;
+                energyGlow.style.opacity = intensity * 0.25;
+                energyGlow.style.transform = `translate(-50%, -50%) scale(${1 + intensity * 0.5})`;
+                
+                body.classList.add('quake');
+                setTimeout(() => body.classList.remove('quake'), 200);
+
+                setTimeout(() => envelopeImg.style.transform = `scale(${1 - intensity * 0.05})`, 150);
+
+                if (envelopeClicks > 0) {
+                    clickHint.textContent = `Berühre das Siegel (${envelopeClicks})`;
+                    clickHint.style.textShadow = `0 0 ${intensity * 10}px rgba(255,179,0,1)`;
+                } else {
+                    clickHint.textContent = "Das Siegel bricht!";
+                    setTimeout(() => {
+                        flashScreen(() => {
+                            envelopeSection.classList.remove('active');
+                            envelopeSection.classList.add('hidden');
+                            letterSection.classList.remove('hidden');
+                            letterSection.classList.add('active');
+                            setTimeout(() => letterContent.classList.add('reveal'), 100);
+                        });
+                    }, 500);
+                }
+            });
+
+            // 6. Close Letter
+            closeLetterBtn.addEventListener('click', () => {
+                letterContent.style.animation = 'none';
+                letterContent.style.transition = 'all 1s cubic-bezier(0.16, 1, 0.3, 1)';
+                letterContent.style.transform = 'scale(0.1) rotate(20deg) translateZ(-800px)';
+                letterContent.style.opacity = '0';
+                letterContent.style.filter = 'blur(20px)';
+
+                setTimeout(() => {
+                    letterSection.classList.remove('active');
+                    letterSection.classList.add('hidden');
+                    endScreen.classList.remove('hidden');
+                    setTimeout(() => {
+                        endScreen.classList.add('active');
+                        setTimeout(() => {
+                            document.getElementById('final-end-text').style.display = 'none';
+                            const creditsRoll = document.getElementById('credits-roll');
+                            creditsRoll.classList.remove('hidden');
+                            creditsRoll.classList.add('credits-active');
+                        }, 4000);
+                    }, 100);
+                }, 1000);
+            });
+        });
+    </script>
+</body>
+</html>
